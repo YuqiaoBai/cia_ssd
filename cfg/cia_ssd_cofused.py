@@ -193,7 +193,7 @@ class Model:
 class Optimization:
     def __init__(self):
         self.TRAIN = {
-        'project_name': None, #None, # 'cia_ssd',
+        'project_name': None, #None, # 'cia-ssd',
         'visualization_func': visualization,
         'batch_size': 8,
         'lr': 0.0001,

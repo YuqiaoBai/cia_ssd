@@ -206,7 +206,7 @@ def noise_comparison(path):
     ax.legend()
     ax.set_xlabel('Number of cooperative vehicles')
     ax.set_ylabel('Percentage drop of mAP@IoU0.7 by introducing noise')
-    plt.savefig("/media/hdd/ophelia/koko/experiments-output/cia_ssd/noise_comparison.png")
+    plt.savefig("/media/hdd/ophelia/koko/experiments-output/cia-ssd/noise_comparison.png")
     plt.close()
 
 
@@ -230,7 +230,7 @@ def nodes_selection_comparison(path):
     ax.legend()
     ax.set_xlabel('Number of cooperative vehicles')
     ax.set_ylabel('Difference of mAP@IoU0.7 with kmeans-delaunay and random selection')
-    plt.savefig("/media/hdd/ophelia/koko/experiments-output/cia_ssd/nodes_selection_comparison.png")
+    plt.savefig("/media/hdd/ophelia/koko/experiments-output/cia-ssd/nodes_selection_comparison.png")
     plt.close()
 
 
@@ -291,7 +291,7 @@ def box_direction_acc(path):
 
 
 if __name__=="__main__":
-    path = "/media/hdd/ophelia/koko/experiments-output/cia_ssd/com60-72m"
+    path = "/media/hdd/ophelia/koko/experiments-output/cia-ssd/com60-72m"
     # nodes_selection_comparison(path)
     # noise_comparison(path)
     box_direction_acc(path)

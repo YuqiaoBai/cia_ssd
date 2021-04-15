@@ -12,7 +12,6 @@ def test(cfgs):
     com_range = cfg.TEST['com_range'] if 'com_range' in list(cfg.TEST.keys()) else 0
 
     test_dataloader = build_dataloader(dcfg, cfg, train=False)
-    print(len(test_dataloader))
     # train on the GPU or on the CPU, if a GPU is not available
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     # device = torch.device('cpu')
@@ -34,10 +33,8 @@ def test(cfgs):
                 fh.writelines('mAP@{}: {:.2f}\n'.format(thr, ap * 100))
 
     # load checkpoint
-    print('load model 11')
     model.load_state_dict(torch.load(str(log_path / 'epoch{:03}.pth'
                                          .format(cfg.TRAIN['total_epochs']))))
-    print('load model 22')
     # dir for save test images
     images_path = (test_out_path / 'images_{}_{}'.format(cfg.TEST['score_threshold'], n_coop))
     images_path.mkdir(exist_ok=True)
@@ -79,7 +76,5 @@ def test(cfgs):
     with open(test_out_path / 'thr{}_ncoop{}.txt'.format(cfg.TEST['score_threshold'], n_coop), 'w') as fh:
         for thr, ap in zip(thrs, aps):
             fh.writelines('mAP@{}: {:.2f}\n'.format(thr, ap * 100))
-
-
-
+    return predictions_dicts
 

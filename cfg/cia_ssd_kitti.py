@@ -84,7 +84,7 @@ class Dataset:
 
 
 class Model:
-    name = 'cia_ssd'
+    name = 'cia-ssd'
     VFE = None
     SPCONV = {
         'num_out_features': 64

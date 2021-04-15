@@ -143,10 +143,10 @@ def second_box_decode(
         rg = rt + ra
     # import matplotlib.pyplot as plt
     # plt.hist(rtx.reshape(-1).cpu().data.numpy(), 20)
-    # plt.savefig("/media/hdd/ophelia/koko/experiments-output/cia_ssd/box_encode_vec8/rtx.png")
+    # plt.savefig("/media/hdd/ophelia/koko/experiments-output/cia-ssd/box_encode_vec8/rtx.png")
     # plt.close()
     # plt.hist(rty.reshape(-1).cpu().data.numpy(), 20)
-    # plt.savefig("/media/hdd/ophelia/koko/experiments-output/cia_ssd/box_encode_vec8/rty.png")
+    # plt.savefig("/media/hdd/ophelia/koko/experiments-output/cia-ssd/box_encode_vec8/rty.png")
     # plt.close()
     if box_ndim > 7:   # False
         if norm_velo:

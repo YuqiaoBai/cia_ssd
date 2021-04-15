@@ -2,7 +2,7 @@ import numpy as np
 import os, sys
 from tools.train import train
 from tools.train_tf import train_tf, test_tf
-from tools.test2 import test
+from tools.test_bai import test
 from utils.train_utils import cfg_from_py
 from copy import deepcopy
 

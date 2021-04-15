@@ -125,24 +125,27 @@ class CoFusedDataset(Dataset):
         bbox_filename = os.path.join(self.cfg.root, "label_box",
                                      self.file_list[index] + ".txt")
         cloud_ego = np.fromfile(cloud_filename_ego, dtype="float32").reshape(-1, 3)
+        # data fix
+        cloud_ego[:, :2] *= -1
         # create a list, first element is cloud_ego
         clouds = [cloud_ego]
         if not self.n_coop == 0:
             # load cooperative clouds with selected points
             coop_files = self.coop_files[index]
-            #if self.node_selection is not None:
-                #selected = []
-                #for i, f in enumerate(coop_files):
+            if self.node_selection is not None:
+                selected = []
+                for i, f in enumerate(coop_files):
                     # which frame which coop
                     # selected_points 20*256*256
-                    #if f.rsplit("/")[-1][:-4] in self.node_selection[self.file_list[index]][self.n_coop - 1]:
-                        #selected.append(i)
+                    if f.rsplit("/")[-1][:-4] in self.node_selection[self.file_list[index]][self.n_coop - 1]:
+                        selected.append(i)
             # selected points
             #
             # random choose points, compared with our algorithm
             if self.n_coop == 'random':
                 selected = np.random.choice(list(np.arange(0, len(coop_files))),
                                             np.random.randint(0, len(coop_files) + 1), replace=False)
+            # select n_coop out of coop_files randomly
             else:
                 selected = np.random.choice(list(np.arange(0, len(coop_files))),
                                             self.n_coop, replace=False)
@@ -151,6 +154,8 @@ class CoFusedDataset(Dataset):
                 cloud_coop = np.fromfile(coop_files[cf], dtype="float32").reshape(-1, 3)
                 if self.add_gps_noise:
                     cloud_coop = add_gps_noise_bev(cloud_coop, self.gps_noise_std)
+                # data fix
+                cloud_coop[:, :2] *= -1
                 clouds.append(cloud_coop)
 
         clouds = np.concatenate(clouds, axis=0)

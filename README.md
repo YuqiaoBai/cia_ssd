@@ -17,10 +17,10 @@ apt-get install -y apt-utils cifs-utils  libboost-all-dev build-essential libssl
 # prepare data and project code
 mkdir koko
 mount -t cifs -o user=,password= //10.51.2.245/tmp/yunshuang koko
-git clone https://yunshuang.yuan:$1@gitlab.uni-hannover.de/yunshuang.yuan/cia_ssd.git 
+git clone https://yunshuang.yuan:$1@gitlab.uni-hannover.de/yunshuang.yuan/cia-ssd.git 
 
 # build spconv
-cd cia_ssd
+cd cia-ssd
 pip install -r requirements.txt
 cd spconv
 python setup.py bdist_wheel
@@ -33,7 +33,7 @@ cd ../.. && python setup.py develop
 wandb login
 
 # run experiments
-python run.py experiments cia_ssd_comap ../koko/data/synthdata3 ../koko/experiments-output/cia_ssd
+python run.py experiments cia_ssd_comap ../koko/data/synthdata3 ../koko/experiments-output/cia-ssd
 ```
 
 

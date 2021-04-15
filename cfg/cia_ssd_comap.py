@@ -121,7 +121,7 @@ class Dataset(object):
 class Model:
     def __init__(self):
         super(Model, self).__init__()
-        self.name = 'cia_ssd'
+        self.name = 'cia-ssd'
         self.VFE = None
         self.SPCONV = {
             'num_out_features': 64
@@ -192,7 +192,7 @@ class Model:
 class Optimization:
     def __init__(self):
         self.TRAIN = {
-        'project_name': None, #None, # 'cia_ssd',
+        'project_name': None, #None, # 'cia-ssd',
         'visualization_func': visualization,
         'batch_size': 8,
         'lr': 0.0001,
@@ -218,7 +218,7 @@ class Optimization:
         'ap_ious': [0.3, 0.4, 0.5, 0.6, 0.7, 0.8]
     }
         self.PATHS = {
-        'run': '/media/hdd/ophelia/koko/experiments-output/cia_ssd'
+        'run': '/media/hdd/ophelia/koko/experiments-output/cia-ssd'
     }
 
 
