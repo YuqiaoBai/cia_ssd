@@ -1,5 +1,4 @@
 import numpy as np
-import matplotlib.pyplot as plt
 import math
 import os
 from glob import glob
@@ -12,7 +11,6 @@ def load_map_patch(ego_loc, grid_size=0.8, ceils=256):
     map_size = map_bin.shape
     netoffset = np.array([270.80, 200.32])
     map_view_size = (np.array([ceils, ceils])).astype(np.int)
-    view = np.zeros([ceils,ceils]).astype(np.int)
     l = [-ceils * grid_size/2, -ceils * grid_size/2, ceils * grid_size/2, ceils * grid_size/2]
     # view in grids
     x = np.arange(l[0], l[2], grid_size)
@@ -35,7 +33,6 @@ def pc2grid(points, ego_loc,  grid_size=0.8, ceils=256):
     y = points[:, 1] - ego_loc[1]
     inds_x = (x/grid_size + ceils/2).astype(np.int)
     inds_y = (y/grid_size + ceils/2).astype(np.int)
-    # plt.plot(inds_x, inds_y, 'b.', markersize=0.2)
     grid[inds_x, inds_y] = 1
     return grid
 
@@ -48,38 +45,16 @@ def load_data(root_path, communication_range=40, grid_size=0.8, ceils=256):
     if os.path.exists('../data/input_data.npy'):
         os.remove('../data/input_data.npy')
 
-    plt.ion()
     for frame in tqdm(frames):
         grids = []
         tf = np.load(os.path.join(root_path, 'tfs', frame + ".npy"), allow_pickle=True).item()
-        ego_loc = tf['tf_ego'][:, 3][:2]
-        for v in glob(os.path.join(root_path, "cloud_coop", frame, "*.bin")):
-            # if in cmmunication_range
-            coop_loc = tf[v.split('/')[-1][:6]][:, 3][:2]
-            dis = math.hypot((coop_loc - ego_loc)[0], (coop_loc - ego_loc)[1])
-            if dis < communication_range:
-                # read coop cloud
-                cloud_coop = np.fromfile(v, dtype=np.float32, count=-1).reshape([-1, 3])
-                # data fix
-                cloud_coop[:, :2] *= -1
-                # plt.plot(cloud_coop[:, 0], cloud_coop[:, 1], 'b.', markersize=0.1)
+        ego_loc = tf['tf_ego'][0:2, -1]
 
-                # transform coop cloud in world coordinate sys
-                coop_cloud = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(cloud_coop))
-                cloud_coop_transformed = coop_cloud.transform(tf[v.rsplit("/")[-1][:-4]])
-                points_coop = np.array(cloud_coop_transformed.points).astype(np.float32)
-                # plt.plot(points[:, 0], points[:, 1], 'b.')
+        # map patch
+        Map = load_map_patch(ego_loc)
+        grids.append(Map)
+        input_data.append(grids)
 
-                # in view range
-                points_in_egoCS = points_coop[:, :2] - coop_loc
-                points = np.clip(points_in_egoCS, a_min=-view_range, a_max=view_range)
-                points = points[:, :2] + coop_loc
-                # plt.plot(points[:, 0], points[:, 1], 'b.', markersize=0.2)
-                grid = pc2grid(points, ego_loc)
-                grids.append(grid)
-
-                # plt.imshow(grid)
-                # plt.plot(128,128, 'g.')
         # ego point cloud
         ego_path = os.path.join(root_path, 'cloud_ego', frame + '.bin')
         cloud_ego = np.fromfile(ego_path, dtype=np.float32, count=-1).reshape([-1, 3])
@@ -90,15 +65,32 @@ def load_data(root_path, communication_range=40, grid_size=0.8, ceils=256):
 
         ego_grid = pc2grid(points_ego, ego_loc)
         grids.append(ego_grid)
-        # map patch
-        Map = load_map_patch(ego_loc)
-        # plt.imshow(Map)
-        grids.append(Map)
-        # print('len of grids:',len(grids))
-        input_data.append(grids)
-        # plt.show()
-        # plt.pause(1)
-        # plt.clf()
+
+        for v in glob(os.path.join(root_path, "cloud_coop", frame, "*.bin")):
+            # if in cmmunication_range
+            coop_loc = tf[v.split('/')[-1][:6]][0:2, -1]
+            dis = math.hypot((coop_loc - ego_loc)[0], (coop_loc - ego_loc)[1])
+            if dis < communication_range:
+                # read coop cloud
+                cloud_coop = np.fromfile(v, dtype=np.float32, count=-1).reshape([-1, 3])
+                # data fix
+                cloud_coop[:, :2] *= -1
+
+                # transform coop cloud in world coordinate sys
+                coop_cloud = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(cloud_coop))
+                cloud_coop_transformed = coop_cloud.transform(tf[v.rsplit("/")[-1][:-4]])
+                points_coop = np.array(cloud_coop_transformed.points).astype(np.float32)
+
+                # in view range
+                points_in_egoCS = points_coop[:, :2] - coop_loc
+                points = np.clip(points_in_egoCS, a_min=-view_range, a_max=view_range)
+                points = points[:, :2] + coop_loc
+                grid = pc2grid(points, ego_loc)
+                grids.append(grid)
+        # fill with zeros
+        while len(grids) < 21:
+            a = np.zeros((256,256))
+            grids.append(a)
 
         # write data in file
         np.save('../data/input_data.npy', input_data)

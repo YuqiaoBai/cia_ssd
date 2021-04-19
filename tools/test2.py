@@ -34,10 +34,8 @@ def test(cfgs):
                 fh.writelines('mAP@{}: {:.2f}\n'.format(thr, ap * 100))
 
     # load checkpoint
-    print('load model 11')
     model.load_state_dict(torch.load(str(log_path / 'epoch{:03}.pth'
                                          .format(cfg.TRAIN['total_epochs']))))
-    print('load model 22')
     # dir for save test images
     images_path = (test_out_path / 'images_{}_{}'.format(cfg.TEST['score_threshold'], n_coop))
     images_path.mkdir(exist_ok=True)

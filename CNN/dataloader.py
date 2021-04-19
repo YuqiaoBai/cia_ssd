@@ -11,14 +11,14 @@ import json
 
 class coopDataset(data.Dataset):
     def __init__(self):
-        self.coop_data = np.load('../data/input_data.npy', allow_pickle=True)
+        self.coop_data = torch.from_numpy(np.load('./data/input_data.npy', allow_pickle=True))
+
 
     def __len__(self):
         return len(self.coop_data)
 
     def __getitem__(self, idx):
         coop_data = self.coop_data[idx]
-        coop_data = torch.from_numpy(np.array(coop_data))
         return coop_data
 
 

@@ -372,7 +372,6 @@ class MultiGroupHead(nn.Module):
             predictions_dicts.append(predictions_dict)
         return predictions_dicts
 
-
 class Head(nn.Module):
     def __init__(self, num_input, num_pred, num_cls, use_dir=False, pred_var=True, num_dir=0,
                  header=True, name="", focal_loss_init=False):

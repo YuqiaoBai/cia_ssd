@@ -44,3 +44,20 @@ class ConvNet(nn.Module):
         d1 = self.decode2(d2, e1)
         out = self.decode1(d1)
         return out
+
+import torch
+from torch import nn
+
+
+class BaiLoss(nn.Module):
+    def __init__(self, bbx,gtr):
+        super(BaiLoss, self).__init__()
+
+        self.bbx = bbx
+        self.gtr = gtr
+
+    def forward(self):
+
+        pass
+
+        return

@@ -57,10 +57,9 @@ class Dataset(object):
         self.name = 'cofused'
         self.root = '/media/ExtHDD01/mastudent/BAI/HybridV50CAV20'
         self.pc_range = np.array([-40, -40, -3, 40, 40, 1])
-        self.test_split = ['943', '1148', '753', '599', '53',
-                      '905', '245', '421', '509', '965', '224', '685', '924', '334', '1175', '139',
+        self.test_split = ['965', '224', '685', '924', '334', '1175', '139',
                            '1070', '1050', '1162', '1260']
-        self.train_val_split = ['829']
+        self.train_val_split = ['829', '943', '1148', '753', '599', '53', '905', '245', '421', '509']
         self.train_split_ratio = 0.8
         self.ego_cloud_name = 'cloud_ego' # 'noisy_cloud_ego'
         self.coop_cloud_name = 'cloud_coop' # 'noisy_cloud_coop'

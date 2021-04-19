@@ -5,6 +5,7 @@ from tools.train_tf import train_tf, test_tf
 from tools.test_bai import test
 from utils.train_utils import cfg_from_py
 from copy import deepcopy
+from bai_exp import *
 
 
 def experiment1(data_path, run_path, range, mode, cfgs):
@@ -101,6 +102,8 @@ if __name__=="__main__":
     elif sys.argv[1]=='experiments':
         assert len(sys.argv)==5, 'data path and log path should be given for experiments'
         experiments(cfgs, sys.argv[3], sys.argv[4])
+    elif sys.argv[1]=='bai':
+        bai_experiment((cfg() for cfg in cfgs))
     else:
         raise ValueError('Argument #1 can only be \'train\', \'test\' or \'experiments\' \n'                         
                          'Argument #2 cfg file name\n'

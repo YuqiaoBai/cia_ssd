@@ -11,7 +11,7 @@ from glob import glob
 
 
 class CoFusedDataset(Dataset):
-    def __init__(self, cfg, training=True, n_coop='random', com_range=60):
+    def __init__(self, cfg, training=True, n_coop='random', com_range=40):
         super().__init__()
         self.training = training
         self.n_coop = n_coop
@@ -22,16 +22,18 @@ class CoFusedDataset(Dataset):
         self.gps_noise_std = cfg.gps_noise_std
 
         # node selection
-        # if cfg.node_selection_mode is not None:
-        #     self.node_selection = np.load(os.path.join(cfg.root, cfg.node_selection_mode + '.npy'),
-        #                                   allow_pickle=True).item()
-        # else:
-        #     self.node_selection = None
+        if cfg.node_selection_mode is not None:
+             self.node_selection = np.load(os.path.join(cfg.root, cfg.node_selection_mode + '.npy'),
+                                           allow_pickle=True).item()
+        else:
+             self.node_selection = None
+
         if cfg.selected_points is not None:
             self.selected_points = np.load(os.path.join(cfg.root, cfg.selected_points + '.npy'),
                                           allow_pickle=True).item()
         else:
             self.selected_points= None
+
 
         # train or test
         if not Path(self.cfg.root + "/train_val.txt").exists():
@@ -104,6 +106,7 @@ class CoFusedDataset(Dataset):
         coop_files_list = []
         selected = []
         for file in self.file_list:
+            # all coop bin files
             coop_files = glob(os.path.join(self.cfg.root, self.cfg.coop_cloud_name, file, '*.bin'))
             tfs = np.load(os.path.join(self.cfg.root, "tfs", file + '.npy'), allow_pickle=True).item()
             coop_ids = [file.rsplit("/")[-1][:-4] for file in coop_files]

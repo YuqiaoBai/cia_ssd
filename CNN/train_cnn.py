@@ -2,13 +2,8 @@ from model import ConvNet
 import numpy as np
 from dataloader import coopDataset
 from torch.utils.data import DataLoader
-import torch
-import torch.nn as nn
-import torch.optim as optim
-from os import path
-import sys
 from tools.test_bai import test
-from utils.train_utils import cfg_from_py
+
 
 
 def train(train_data, model):

@@ -47,11 +47,6 @@ def train(cfgs):
 
         lr_scheduler.step()
 
-        # save checkpoint
-        if (epoch + 1) % cfg.TRAIN['save_ckpt_every']==0:
-            torch.save(model.state_dict(), str(log_path / 'epoch{:03}.pth'.format((epoch + 1))))
-        else:
-            torch.save(model.state_dict(), str(log_path / 'latest.pth'.format((epoch + 1))))
     print("Train finished.")
     wandb.finish()
 
@@ -65,7 +60,7 @@ def train_one_epoch(train_dataloader, model,optimizer, lr_scheduler, epoch, cfg,
         # if iteration==120:
         #     print("debug")
         points = batch_data.pop('points')
-        points = points[points[:, 0] == 0, 1:4]
+        points = points[points[: ,0]==0, 1:4]
         # bev = batch_data['bev_input'][0]
         gt_boxes = batch_data['gt_boxes'][0]
         load_data_to_device(batch_data)
@@ -73,33 +68,9 @@ def train_one_epoch(train_dataloader, model,optimizer, lr_scheduler, epoch, cfg,
         optimizer.zero_grad()
         # Forward pass
         batch_data = model(batch_data)
-        if (len_data * (epoch-1) + iteration) % 40== 0 and cfg.TRAIN['project_name'] is not None:
-            with torch.no_grad():
-                # regs_pred = batch_data['reg_logits'][0].permute(1, 2, 0)
-                # regs_tgt = batch_data['regression_map'][0].permute(1, 2, 0)
-                # xs, ys = torch.where(regs_tgt.sum(dim=-1))
-                # tmp = regs_tgt[xs, ys, -2:]
-                # wandb.log({'reg/cos': wandb.Histogram(regs_pred[xs, ys, -1].detach().cpu().numpy()),
-                #            'reg/diff_cos': torch.abs(regs_pred[xs, ys, -1] - regs_tgt[xs, ys, -1]).mean().item(),
-                #            'reg/diff_cos_histo': wandb.Histogram(torch.abs(regs_pred[xs, ys, -1] -
-                #                                            regs_tgt[xs, ys, -1]).detach().cpu().numpy()),
-                #            })
-                # wandb.log({'cls/input': wandb.Image((bev.sum(axis=0) > 0).transpose()[::-1, :].astype(np.float))})
-                # scores = torch.sigmoid(batch_data['cls_logits'][0]).squeeze()
-                # target = batch_data['label_map'][0].squeeze()
-                # reg_tgt = batch_data['regression_map'][0]
-                # wandb.log({'cls/predictions': wandb.Image(scores.detach().cpu().numpy().transpose()[::-1,:]),
-                #            'cls/targets': wandb.Image(target.detach().cpu().numpy().transpose()[::-1,:]),
-                #            'reg/targets': wandb.Image((reg_tgt.detach()[0]!=0).int().cpu().numpy().transpose()[::-1,:]),})
-                if epoch>2 and iteration % 40 == 0:
-                    wandb.log({'test': wandb.Image(np.zeros([100, 100]))})
-                    predictions_dicts = model.post_processing(batch_data, cfg.TEST)
-                    n_boxes = len(predictions_dicts[0]['box_lidar'])
-                    pred_boxes = predictions_dicts[0]['box_lidar'] if n_boxes>0 else None
-                    cfg.TRAIN['visualization_func'](points, pred_boxes, gt_boxes, cfg.TRAIN['pc_range'])
-                    # cfg.TRAIN['visualization_func'](points, pred_boxes=None, gt_boxes=None,
-                    #                                 pc_range=cfg.TRAIN['pc_range'])
-                    # pass
+
+        predictions_dicts = model.post_processing(batch_data, cfg.TEST)
+        pred_boxes = predictions_dicts[0]['box_lidar']
 
         loss_dict = model.loss(batch_data)
         loss = loss_dict['loss']
@@ -119,7 +90,7 @@ def train_one_epoch(train_dataloader, model,optimizer, lr_scheduler, epoch, cfg,
         loss_dict = {k: v.item() for k, v in loss_dict.items() if v}
         if logger is not None:
             logger.log(epoch, iteration, lr_scheduler.get_last_lr()[0], **loss_dict)
-
+    return pred_boxes
 
 
 
