@@ -11,22 +11,14 @@ from glob import glob
 
 
 class CoFusedDataset(Dataset):
-    def __init__(self, cfg, training=True, n_coop='random', com_range=40):
+    def __init__(self, cfg, training=True, com_range=40):
         super().__init__()
         self.training = training
-        self.n_coop = n_coop
         self.com_range = com_range
         self.cfg = cfg
         self.root = Path(self.cfg.root)
-        self.add_gps_noise = cfg.add_gps_noise
-        self.gps_noise_std = cfg.gps_noise_std
 
-        # node selection
-        if cfg.node_selection_mode is not None:
-             self.node_selection = np.load(os.path.join(cfg.root, cfg.node_selection_mode + '.npy'),
-                                           allow_pickle=True).item()
-        else:
-             self.node_selection = None
+        # points selection
 
         if cfg.selected_points is not None:
             self.selected_points = np.load(os.path.join(cfg.root, cfg.selected_points + '.npy'),
@@ -37,7 +29,9 @@ class CoFusedDataset(Dataset):
 
         # train or test
         if not Path(self.cfg.root + "/train_val.txt").exists():
+            # method taht writes train_val and test txt file
             split(cfg)
+        # read train or test data txt file
         if self.mode == "train":
             with open(self.cfg.root + "/train_val.txt", "r") as f:
                 self.file_list = f.read().splitlines()
@@ -45,17 +39,15 @@ class CoFusedDataset(Dataset):
             with open(self.cfg.root + "/test.txt", "r") as f:
                 self.file_list = f.read().splitlines()
 
-        self.coop_files = self.update_file_list()
+        # remove vehicle out of communication range
+        self.coop_files = self.update_file_list() # path list
+
         str = 'train val set: ' if self.training else 'test set: '
-        print(str, len(self.file_list))
+        print(str, len(self.coop_files))
 
-        # point label map, 0 as non-relevant classes
-        self.label_color_map = {}
-        for i, classes in self.cfg.classes.items():
-            self.label_color_map[i] = [list(self.cfg.LABEL_COLORS.keys()).index(c) for c in classes]
-
-        self.augmentor = None
+        # ----------------------------------------------------------?????--------------------------------------------
         if self.training:
+            # from class instance cfg get attribute augmentor, if not return default value None
             if getattr(self.cfg, "AUGMENTOR", None):
                 from datasets.cofused.augmentor import Augmentor
                 self.augmentor = Augmentor(cfg)
@@ -65,13 +57,18 @@ class CoFusedDataset(Dataset):
             self.target_assigner = assign_target.AssignTarget(cfg.pc_range,
                                                               cfg=self.cfg.TARGET_ASSIGNER,
                                                               mode=self.mode)
+        # -----------------------------------------------------------?????--------------------------------------------
 
+        #  'train': ['mask_points_in_range', 'rm_empty_gt_boxes', 'shuffle_points',
+        #                       'points_to_voxel', 'assign_target'],
+        #             'test': ['mask_points_in_range', 'points_to_voxel', 'assign_target']
         process_fn = self.cfg.process_fn["train"] if self.training else self.cfg.process_fn["test"]
         self.processors = []
         for fn in process_fn:
             if fn == "points_to_voxel":
                 self.voxel_generator = VoxelGenerator(
                     voxel_size=self.cfg.voxel_size,
+                    # view range = pc_range
                     point_cloud_range=self.cfg.pc_range,
                     max_num_points=self.cfg.max_points_per_voxel,
                     max_voxels=self.cfg.max_num_voxels
@@ -92,7 +89,11 @@ class CoFusedDataset(Dataset):
         data_dict = self.load_data(index)
         if self.augmentor is not None:
             data_dict = self.augmentor.forward(data_dict)
+        # limit_period?
         data_dict["gt_boxes"][:, 6] = limit_period(data_dict["gt_boxes"][:, 6], 0.5, 2 * np.pi)
+        #  'train': ['mask_points_in_range', 'rm_empty_gt_boxes', 'shuffle_points',
+        #                       'points_to_voxel', 'assign_target'],
+        #             'test': ['mask_points_in_range', 'points_to_voxel', 'assign_target']
         for processor in self.processors:
             data_dict = processor(data_dict)
 
@@ -100,26 +101,29 @@ class CoFusedDataset(Dataset):
 
     def update_file_list(self):
         """
-        Update file list according to number of cooperative vehicles, frames will be removed if
-        the number of cooperative vehicles is less than the given number
+        Update file list according to communication range
+        remove frame with no coop vehicle
+        file_list = 'frame list'
         """
         coop_files_list = []
         selected = []
         for file in self.file_list:
             # all coop bin files
             coop_files = glob(os.path.join(self.cfg.root, self.cfg.coop_cloud_name, file, '*.bin'))
+            # get all the location infos(ego and coop)
             tfs = np.load(os.path.join(self.cfg.root, "tfs", file + '.npy'), allow_pickle=True).item()
             coop_ids = [file.rsplit("/")[-1][:-4] for file in coop_files]
             ego_loc = tfs['tf_ego'][0:2, -1]
             coop_locs = [tfs[coop_id][0:2, -1] for coop_id in coop_ids]
             # in communication range
             coop_in_com_range_inds = np.linalg.norm(np.array(coop_locs) - np.array(ego_loc), axis=1) < self.com_range
-            coop_files = np.array(coop_files)[coop_in_com_range_inds].tolist()
-            if self.training or self.n_coop == 'random' or self.n_coop == 0 or len(coop_files) >= self.n_coop:
+            coop_files = np.array(coop_files)[coop_in_com_range_inds].tolist() # path
+            # remove frame with no coop vehicle
+            if self.training or len(coop_files) > 0:
                 selected.append(file)
                 coop_files_list.append(coop_files)
         self.file_list = selected
-        return coop_files_list
+        return coop_files_list # path list
 
     def load_data(self, index):
         # load point cloud and gt
@@ -132,34 +136,21 @@ class CoFusedDataset(Dataset):
         cloud_ego[:, :2] *= -1
         # create a list, first element is cloud_ego
         clouds = [cloud_ego]
-        if not self.n_coop == 0:
-            # load cooperative clouds with selected points
-            coop_files = self.coop_files[index]
-            if self.node_selection is not None:
-                selected = []
-                for i, f in enumerate(coop_files):
-                    # which frame which coop
-                    # selected_points 20*256*256
-                    if f.rsplit("/")[-1][:-4] in self.node_selection[self.file_list[index]][self.n_coop - 1]:
-                        selected.append(i)
-            # selected points
-            #
-            # random choose points, compared with our algorithm
-            if self.n_coop == 'random':
-                selected = np.random.choice(list(np.arange(0, len(coop_files))),
-                                            np.random.randint(0, len(coop_files) + 1), replace=False)
-            # select n_coop out of coop_files randomly
-            else:
-                selected = np.random.choice(list(np.arange(0, len(coop_files))),
-                                            self.n_coop, replace=False)
 
-            for cf in selected.tolist():
-                cloud_coop = np.fromfile(coop_files[cf], dtype="float32").reshape(-1, 3)
-                if self.add_gps_noise:
-                    cloud_coop = add_gps_noise_bev(cloud_coop, self.gps_noise_std)
-                # data fix
-                cloud_coop[:, :2] *= -1
-                clouds.append(cloud_coop)
+        # load cooperative clouds
+        coop_files = self.coop_files[index]
+        selected = []
+        for i, f in enumerate(coop_files):
+            # which frame which coop
+            # selected_points 20*256*256
+            selected.append(i)
+        # select n_coop out of coop_files randomly
+
+        for cf in selected.tolist():
+            cloud_coop = np.fromfile(coop_files[cf], dtype="float32").reshape(-1, 3)
+            # data fix
+            cloud_coop[:, :2] *= -1
+            clouds.append(cloud_coop)
 
         clouds = np.concatenate(clouds, axis=0)
         gt_boxes = np.loadtxt(bbox_filename, dtype=str)[:, [2, 3, 4, 8, 9, 10, 7]].astype(np.float)
@@ -369,6 +360,11 @@ class CoFusedDataset(Dataset):
 
 
 def split(cfg):
+    """
+    write train and test txt files
+    :param cfg:
+    :return:
+    """
     path_ego = Path(cfg.root) / "cloud_ego"
     list_train_val = []
     list_test = []

@@ -53,7 +53,6 @@ def load_data(root_path, communication_range=40, grid_size=0.8, ceils=256):
         # map patch
         Map = load_map_patch(ego_loc)
         grids.append(Map)
-        input_data.append(grids)
 
         # ego point cloud
         ego_path = os.path.join(root_path, 'cloud_ego', frame + '.bin')
@@ -91,7 +90,7 @@ def load_data(root_path, communication_range=40, grid_size=0.8, ceils=256):
         while len(grids) < 21:
             a = np.zeros((256,256))
             grids.append(a)
-
+        input_data.append(grids)
         # write data in file
         np.save('../data/input_data.npy', input_data)
     return input_data

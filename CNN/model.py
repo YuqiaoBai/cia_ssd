@@ -21,14 +21,10 @@ class ConvNet(nn.Module):
 
         self.base_model = torchvision.models.resnet18(True)
         self.base_layers = list(self.base_model.children())
-        self.layer1 = nn.Sequential(
-            nn.Conv2d(21, 64, kernel_size=(3, 3), stride=2, padding=(3, 3), bias=False))
-        self.layer2 = nn.Sequential(
-            nn.Conv2d(64, 128, kernel_size=(3, 3), stride=2, padding=(3, 3), bias=False))
-        self.layer3 =nn.Sequential(
-            nn.Conv2d(128, 256, kernel_size=(3, 3), stride=2, padding=(3, 3), bias=False))
-        self.layer4 = nn.Sequential(
-            nn.Conv2d(256, 512, kernel_size=(3, 3), stride=2, padding=(3, 3), bias=False))
+        self.layer1 = nn.Conv2d(in_channels=21, out_channels=64, kernel_size=(3, 3), stride=2, padding=(3, 3), bias=False)
+        self.layer2 = nn.Conv2d(64, 128, kernel_size=(3, 3), stride=2, padding=(3, 3), bias=False)
+        self.layer3 = nn.Conv2d(128, 256, kernel_size=(3, 3), stride=2, padding=(3, 3), bias=False)
+        self.layer4 = nn.Conv2d(256, 512, kernel_size=(3, 3), stride=2, padding=(3, 3), bias=False)
         self.decode4 = Decoder(512, 256)
         self.decode3 = Decoder(256, 128)
         self.decode2 = Decoder(128, 64)
@@ -45,7 +41,7 @@ class ConvNet(nn.Module):
         out = self.decode1(d1)
         return out
 
-import torch
+
 from torch import nn
 
 

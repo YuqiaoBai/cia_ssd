@@ -56,7 +56,7 @@ class Dataset(object):
         super(Dataset, self).__init__()
         self.name = 'cofused'
         self.root = '/media/ExtHDD01/mastudent/BAI/HybridV50CAV20'
-        self.pc_range = np.array([-40, -40, -3, 40, 40, 1])
+        self.pc_range = np.array([-60.4, -60.4, -3, 60.4, 60.4, 1])
         self.test_split = ['965', '224', '685', '924', '334', '1175', '139',
                            '1070', '1050', '1162', '1260']
         self.train_val_split = ['829', '943', '1148', '753', '599', '53', '905', '245', '421', '509']

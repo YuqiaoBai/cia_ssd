@@ -56,8 +56,8 @@ def bai_experiment(cfgs):
     # forward cnn
     for data in data_loader_convnet:
         # data_clouds = data["clouds"] # 256x256x21
-        data = data[0,:].cuda()
-        out = cnn_model(data) # 256x256x20
+        data = torch.squeeze(data, dim=0).cuda()
+        out = cnn_model(data) # 256x256x20 as batch
         input_od = data_masking(data, out)
         pred = od_model(input_od)
         print(pred)
