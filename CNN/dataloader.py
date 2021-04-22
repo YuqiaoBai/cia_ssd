@@ -4,6 +4,7 @@ import numpy as np
 from torch.utils.data import Dataset, DataLoader
 from pathlib import Path
 from glob import glob
+from collections import defaultdict
 import open3d as o3d
 
 
@@ -11,6 +12,7 @@ class coopDataset(Dataset):
     def __init__(self, com_range=40, training=True):
         self.com_range = com_range
         self.training = training
+        self.pc_range = np.array([-60.4, -60.4, -3, 60.4, 60.4, 1])
         self.root = '/media/ExtHDD01/mastudent/BAI/HybridV50CAV20'
         self.test_split = ['965', '224', '685', '924', '334', '1175', '139',
                            '1070', '1050', '1162', '1260']
@@ -38,11 +40,16 @@ class coopDataset(Dataset):
 
     def __getitem__(self, idx):
         data_dict = self.load_data(idx)
-        return data_dict
+        self.update_file_list()
+        self.mask_points_in_range(data_dict)
+        return self.drop_intermidiate_data(data_dict)
 
     @property
     def mode(self):
         return "train" if self.training else "test"
+
+    def limit_period(self, val, offset=0.5, period=2 * np.pi):
+        return val - np.floor(val / period + offset) * period
 
     def update_file_list(self):
         """
@@ -71,6 +78,20 @@ class coopDataset(Dataset):
         self.file_list = selected
         return coop_files_list # path list
 
+    def mask_points_in_range(self, data_dict):
+        # mask points and boxes outside range
+        gt_boxes = data_dict["gt_boxes"]
+        box_centers = gt_boxes[:, :3].astype(float)
+        mask = self._mask_points_in_range(box_centers, self.pc_range[3])
+        data_dict["batch_types"]["points_labels"] = "gpu_long"
+        data_dict["gt_boxes"] = gt_boxes[mask]
+        data_dict["gt_names"] = data_dict["gt_names"][mask]
+        data_dict["gt_classes"] = data_dict["gt_classes"][mask]
+        return data_dict
+
+    def _mask_points_in_range(self, points, dist):
+        return np.linalg.norm(points[:, :2], axis=1) < dist
+
     def load_data(self, index):
         grids = []
         tfs = np.load(os.path.join(self.root, "tfs", self.file_list[index] + '.npy'), allow_pickle=True).item()
@@ -92,8 +113,8 @@ class coopDataset(Dataset):
         points_ego = np.array(cloud_ego_transformed.points).astype(np.float32)
 
         ego_grid = self.pc2grid(points_ego, ego_loc)
-        # create a list, first element is cloud_ego
-        clouds = [ego_grid]
+
+        grids.append(ego_grid)
 
         # load cooperative clouds
         coop_files = self.coop_files[index]
@@ -118,11 +139,20 @@ class coopDataset(Dataset):
             points = np.clip(points_in_egoCS, a_min=-self.view_range, a_max=self.view_range)
             points = points[:, :2] + coop_loc
             grid = self.pc2grid(points, ego_loc)
+            grids.append(grid)
 
-            clouds.append(grid)
-
-        clouds = np.array(clouds)
-        gt_boxes = np.loadtxt(bbox_filename, dtype=str)[:, [2, 3, 4, 8, 9, 10, 7]].astype(np.float)
+        # fill with zeros
+        while len(grids) < 21:
+            a = np.zeros((256, 256))
+            grids.append(a)
+        grids = np.array(grids)
+        gt_boxes = np.loadtxt(bbox_filename, dtype=str)[:, [0, 2, 3, 4, 8, 9, 10, 7]].astype(np.float)
+        coop_ids = [file.rsplit("/")[-1][:-4] for file in coop_files]
+        gt_idxs = [np.where(gt_boxes[:, 0] == float(coop_id)) for coop_id in coop_ids]
+        gt_boxes = np.squeeze(gt_boxes[gt_idxs,:]).reshape(-1,8)
+        gt_boxes = gt_boxes[:, 1:]
+        while gt_boxes.shape[0] < 20:
+            gt_boxes = np.insert(gt_boxes, 0, values=0, axis=0)
 
         batch_type = {
             "points": "cpu_float",
@@ -131,7 +161,7 @@ class coopDataset(Dataset):
         }
 
         return {
-            "points": clouds,
+            "points": grids,
             "gt_boxes": gt_boxes,
             "gt_names": np.array(["Car"] * len(gt_boxes)),
             "gt_classes": np.array([1] * len(gt_boxes)),
@@ -168,6 +198,13 @@ class coopDataset(Dataset):
         view = view.reshape(map_view_size[0], map_view_size[1])
         return view
 
+    def drop_intermidiate_data(self, data_dict):
+        data_dict.pop('gt_names')
+        data_dict.pop('gt_classes')
+        # inds = np.random.choice(len(data_dict['points']), len(data_dict['points']) // 4)
+        # data_dict['points'] = data_dict['points'][inds, :] # only for visualization
+        return data_dict
+
     def split(self):
         """
         write train and test txt files
@@ -191,11 +228,9 @@ class coopDataset(Dataset):
                 fb.writelines(line + "\n")
 
 
-
-
-if __name__ == '__main__':
-
-      dataset = coopDataset()
-      dataloader = DataLoader(dataset, batch_size=2)
-      for data in dataloader:
-         print(data.shape)
+# if __name__ == '__main__':
+#
+#     dataset = coopDataset()
+#     dataloader = DataLoader(dataset, batch_size=6, shuffle=True)
+#     for data in dataloader:
+#         print(data["points"].shape)

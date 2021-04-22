@@ -21,8 +21,11 @@ def points_in_boxes_gpu(points, boxes):
     return box_idxs_of_pts
 
 def loss_function(output, gt):
-    pass
+
     return
+
+def data_mask():
+    pass
 
 
 epoches = 2
@@ -31,10 +34,11 @@ learning_rate = 0.001
 
 # Load data
 train_data = coopDataset()
-train_loader = DataLoader(dataset=train_data, batch_size=batch_size)
-
+train_loader = DataLoader(dataset=train_data, batch_size=batch_size, shuffle=True)
+device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 # Model
 Coop = ConvNet()
+Coop = Coop.float().to(device)
 # Define optimizer and loss function
 optimizer = optim.Adam(Coop.parameters(), lr=learning_rate)
 
@@ -43,10 +47,9 @@ optimizer = optim.Adam(Coop.parameters(), lr=learning_rate)
 for epoch in range(epoches):
     print('epoch:{}'.format(epoch))
     for step, cnn_input in enumerate(train_loader):
-        output = Coop(cnn_input)
-        loss = loss_function(output, gt)
+        output = Coop(cnn_input["points"].float().to(device))
+        loss = loss_function(output, cnn_input["gt_boxes"])
         optimizer.zero_grad()
-        loss.backward()
         optimizer.step()
 
         if step % 10 == 0:
