@@ -7,26 +7,25 @@ from tqdm import tqdm
 
 
 def data_mask(mask, points):
+    # remove map layer
     points = points[:, 1:, :, :]
     fused_points = mask * points
     return fused_points
 
 
 epoches = 2
-batch_size = 20
+batch_size = 2
 learning_rate = 0.001
 
 # Load data
 train_data = coopDataset()
 train_loader = DataLoader(dataset=train_data, batch_size=batch_size, shuffle=True, num_workers=6)
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-print(device)
 # Model
 Coop = ConvNet()
 Coop = Coop.float().cuda()
 # Define optimizer and loss function
 optimizer = optim.SGD(Coop.parameters(), lr=learning_rate)
-
 
 # Train
 for epoch in range(epoches):
@@ -35,7 +34,7 @@ for epoch in range(epoches):
         output = Coop(cnn_input["points"].float().cuda())
         points_fused = data_mask(output, cnn_input["points"].float().cuda())
         loss_function = PointsLoss()
-        loss = loss_function(points_fused, cnn_input["points"])
+        loss = loss_function(points_fused.cuda(), cnn_input["points"].cuda(), cnn_input["gt_boxes"].cuda())
         loss.requires_grad = True
         optimizer.zero_grad()
         loss.backward()

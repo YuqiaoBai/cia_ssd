@@ -1,6 +1,12 @@
-import matplotlib.pyplot as plt
 import numpy as np
+import torch
 
-map_bin = np.load('./data/map_colsed.npy').astype(int)
-plt.imshow(map_bin)
-plt.show()
+n_object = torch.zeros(5,3)
+n_predict = torch.zeros(5,3)
+
+intersection = (n_object & n_predict)
+union = (n_object | n_predict)
+
+iou = intersection/union
+
+print(iou)

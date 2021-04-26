@@ -12,12 +12,12 @@ class coopDataset(Dataset):
     def __init__(self, com_range=40, training=True):
         self.com_range = com_range
         self.training = training
-        self.pc_range = np.array([-60.4, -60.4, -3, 60.4, 60.4, 1])
+        self.pc_range = np.array([-62.4, -62.4, -3, 62.4, 62.4, 1])
         self.root = '/media/ExtHDD01/mastudent/BAI/HybridV50CAV20'
         self.test_split = ['965', '224', '685', '924', '334', '1175', '139',
                            '1070', '1050', '1162', '1260']
         self.train_val_split = ['829', '943', '1148', '753', '599', '53', '905', '245', '421', '509']
-        self.view_range = 60.4
+        self.view_range = 62.4
 
         # train or test
         if not Path(self.root + "/train_val.txt").exists():
