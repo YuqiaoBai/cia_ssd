@@ -18,6 +18,7 @@ class coopDataset(Dataset):
                            '1070', '1050', '1162', '1260']
         self.train_val_split = ['829', '943', '1148', '753', '599', '53', '905', '245', '421', '509']
         self.view_range = 62.4
+        self.map_bin = np.load('../data/map_colsed.npy').astype(int)
 
         # train or test
         if not Path(self.root + "/train_val.txt").exists():
@@ -166,7 +167,7 @@ class coopDataset(Dataset):
             "gt_names": np.array(["Car"] * len(gt_boxes)),
             "gt_classes": np.array([1] * len(gt_boxes)),
             "frame": self.file_list[index],
-            "batch_types": batch_type
+            "batch_types": batch_type,
         }
 
     def pc2grid(self, points, ego_loc, grid_size=0.8, ceils=256):
@@ -179,8 +180,7 @@ class coopDataset(Dataset):
         return grid
 
     def load_map_patch(self, ego_loc, grid_size=0.8, ceils=256):
-        map_bin = np.load('../data/map_colsed.npy').astype(int)
-        map_size = map_bin.shape
+        map_size = self.map_bin.shape
         netoffset = np.array([270.80, 200.32])
         map_view_size = (np.array([ceils, ceils])).astype(np.int)
         l = [-ceils * grid_size / 2, -ceils * grid_size / 2, ceils * grid_size / 2, ceils * grid_size / 2]
@@ -194,7 +194,7 @@ class coopDataset(Dataset):
         inds = (points / 0.1).astype(np.int)
         inds_x = np.clip(inds[:, 0], a_min=0, a_max=map_size[0] - 1)
         inds_y = np.clip(inds[:, 1], a_min=0, a_max=map_size[1] - 1)
-        view = map_bin[inds_x, inds_y].astype(int)
+        view = self.map_bin[inds_x, inds_y].astype(int)
         view = view.reshape(map_view_size[0], map_view_size[1])
         return view
 

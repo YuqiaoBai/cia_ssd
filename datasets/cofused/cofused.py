@@ -155,11 +155,6 @@ class CoFusedDataset(Dataset):
         clouds = np.concatenate(clouds, axis=0)
         gt_boxes = np.loadtxt(bbox_filename, dtype=str)[:, [2, 3, 4, 8, 9, 10, 7]].astype(np.float)
 
-        # clouds = clouds[self._mask_points_in_box(clouds[:, :3], self.cfg.pc_range)]
-        # from vlib.visulization import draw_points_boxes_plt
-        # draw_points_boxes_plt(self.cfg.pc_range, clouds, None, gt_boxes, False)
-        # print('debug')
-        # gt_boxes[:, 3:6] = gt_boxes[:, 3:6] / 2
         batch_type = {
             "points": "cpu_float",
             "gt_boxes": "gpu_float",
@@ -173,6 +168,7 @@ class CoFusedDataset(Dataset):
             "gt_classes": np.array([1] * len(gt_boxes)),
             "frame": self.file_list[index],
             "batch_types": batch_type
+            "tf_ego" : tf[""]
         }
 
     def mask_points_in_range(self, data_dict):
