@@ -147,14 +147,19 @@ class coopDataset(Dataset):
             a = np.zeros((256, 256))
             grids.append(a)
         grids = np.array(grids)
-        gt_boxes = np.loadtxt(bbox_filename, dtype=str)[:, [0, 2, 3, 4, 8, 9, 10, 7]].astype(np.float)
+        # gt_boxes = np.loadtxt(bbox_filename, dtype=str)[:, [0, 2, 3, 4, 8, 9, 10, 7]].astype(np.float)
+        gt_boxes_all = np.loadtxt(os.path.join(self.root, 'vehicle_info', 'j' +
+                                               self.file_list[index].split('_')[0] + '.csv'), delimiter=",",skiprows=1,usecols=(0, 2, 3, 4, 5, 9, 10, 11, 8)).astype(np.float)
+        gt_boxes = gt_boxes_all[gt_boxes_all[:, 0] == int(self.file_list[index].split('_')[1])]
+        gt_boxes = gt_boxes[:, 1:]
+
         coop_ids = [file.rsplit("/")[-1][:-4] for file in coop_files]
         gt_idxs = [np.where(gt_boxes[:, 0] == float(coop_id)) for coop_id in coop_ids]
-        gt_boxes = np.squeeze(gt_boxes[gt_idxs,:]).reshape(-1,8)
+        gt_boxes = np.squeeze(gt_boxes[gt_idxs, :]).reshape(-1, 8)
         gt_boxes = gt_boxes[:, 1:]
         while gt_boxes.shape[0] < 20:
             gt_boxes = np.insert(gt_boxes, 0, values=0, axis=0)
-
+        print(gt_boxes.shape,len(gt_idxs))
         batch_type = {
             "points": "cpu_float",
             "gt_boxes": "gpu_float",
@@ -168,6 +173,7 @@ class coopDataset(Dataset):
             "gt_classes": np.array([1] * len(gt_boxes)),
             "frame": self.file_list[index],
             "batch_types": batch_type,
+            "tf_ego": tfs['tf_ego']
         }
 
     def pc2grid(self, points, ego_loc, grid_size=0.8, ceils=256):

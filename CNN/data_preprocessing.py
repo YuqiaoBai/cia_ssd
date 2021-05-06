@@ -4,6 +4,7 @@ import os
 from glob import glob
 from tqdm import tqdm
 import open3d as o3d
+import matplotlib.pyplot as plt
 
 
 def load_map_patch(ego_loc, grid_size=0.8, ceils=256):
@@ -53,7 +54,6 @@ def load_data(root_path, communication_range=40, grid_size=0.8, ceils=256):
         # map patch
         Map = load_map_patch(ego_loc)
         grids.append(Map)
-
         # ego point cloud
         ego_path = os.path.join(root_path, 'cloud_ego', frame + '.bin')
         cloud_ego = np.fromfile(ego_path, dtype=np.float32, count=-1).reshape([-1, 3])
@@ -85,12 +85,14 @@ def load_data(root_path, communication_range=40, grid_size=0.8, ceils=256):
                 points = np.clip(points_in_egoCS, a_min=-view_range, a_max=view_range)
                 points = points[:, :2] + coop_loc
                 grid = pc2grid(points, ego_loc)
+                plt.imshow(grid)
                 grids.append(grid)
         # fill with zeros
         while len(grids) < 21:
             a = np.zeros((256,256))
             grids.append(a)
         input_data.append(grids)
+
         # write data in file
         np.save('../data/input_data.npy', input_data)
     return input_data

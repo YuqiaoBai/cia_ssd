@@ -168,7 +168,6 @@ class CoFusedDataset(Dataset):
             "gt_classes": np.array([1] * len(gt_boxes)),
             "frame": self.file_list[index],
             "batch_types": batch_type
-            "tf_ego" : tf[""]
         }
 
     def mask_points_in_range(self, data_dict):

@@ -1,12 +1,5 @@
 import numpy as np
 import torch
 
-n_object = torch.zeros(5,3)
-n_predict = torch.zeros(5,3)
-
-intersection = (n_object & n_predict)
-union = (n_object | n_predict)
-
-iou = intersection/union
-
-print(iou)
+a = np.load('/media/ExtHDD01/mastudent/BAI/HybridV50CAV20/vehicle_info/ego_ids.npy',allow_pickle=True)
+print(a)
