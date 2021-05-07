@@ -41,9 +41,7 @@ class coopDataset(Dataset):
 
     def __getitem__(self, idx):
         data_dict = self.load_data(idx)
-        self.update_file_list()
-        self.mask_points_in_range(data_dict)
-        return self.drop_intermidiate_data(data_dict)
+        return data_dict
 
     @property
     def mode(self):
@@ -60,6 +58,7 @@ class coopDataset(Dataset):
         """
         coop_files_list = []
         selected = []
+        # file list from read txt file
         for file in self.file_list:
             # all coop bin files
             coop_files = glob(os.path.join(self.root, 'cloud_coop', file, '*.bin'))
@@ -73,25 +72,12 @@ class coopDataset(Dataset):
             # vehicles in com_range in same frame
             coop_files = np.array(coop_files)[coop_in_com_range_inds].tolist() # path
             # remove frame with no coop vehicle
-            if self.training or len(coop_files) > 0:
+            if len(coop_files) > 0:
+                # selected frame
                 selected.append(file)
                 coop_files_list.append(coop_files)
         self.file_list = selected
         return coop_files_list # path list
-
-    def mask_points_in_range(self, data_dict):
-        # mask points and boxes outside range
-        gt_boxes = data_dict["gt_boxes"]
-        box_centers = gt_boxes[:, :3].astype(float)
-        mask = self._mask_points_in_range(box_centers, self.pc_range[3])
-        data_dict["batch_types"]["points_labels"] = "gpu_long"
-        data_dict["gt_boxes"] = gt_boxes[mask]
-        data_dict["gt_names"] = data_dict["gt_names"][mask]
-        data_dict["gt_classes"] = data_dict["gt_classes"][mask]
-        return data_dict
-
-    def _mask_points_in_range(self, points, dist):
-        return np.linalg.norm(points[:, :2], axis=1) < dist
 
     def load_data(self, index):
         grids = []
@@ -159,7 +145,6 @@ class coopDataset(Dataset):
         gt_boxes = gt_boxes[:, 1:]
         while gt_boxes.shape[0] < 20:
             gt_boxes = np.insert(gt_boxes, 0, values=0, axis=0)
-        print(gt_boxes.shape,len(gt_idxs))
         batch_type = {
             "points": "cpu_float",
             "gt_boxes": "gpu_float",
@@ -169,11 +154,8 @@ class coopDataset(Dataset):
         return {
             "points": grids,
             "gt_boxes": gt_boxes,
-            "gt_names": np.array(["Car"] * len(gt_boxes)),
-            "gt_classes": np.array([1] * len(gt_boxes)),
             "frame": self.file_list[index],
             "batch_types": batch_type,
-            "tf_ego": tfs['tf_ego']
         }
 
     def pc2grid(self, points, ego_loc, grid_size=0.8, ceils=256):
@@ -204,13 +186,6 @@ class coopDataset(Dataset):
         view = view.reshape(map_view_size[0], map_view_size[1])
         return view
 
-    def drop_intermidiate_data(self, data_dict):
-        data_dict.pop('gt_names')
-        data_dict.pop('gt_classes')
-        # inds = np.random.choice(len(data_dict['points']), len(data_dict['points']) // 4)
-        # data_dict['points'] = data_dict['points'][inds, :] # only for visualization
-        return data_dict
-
     def split(self):
         """
         write train and test txt files
@@ -234,9 +209,9 @@ class coopDataset(Dataset):
                 fb.writelines(line + "\n")
 
 
-# if __name__ == '__main__':
-#
-#     dataset = coopDataset()
-#     dataloader = DataLoader(dataset, batch_size=6, shuffle=True)
-#     for data in dataloader:
-#         print(data["points"].shape)
+if __name__ == '__main__':
+
+    dataset = coopDataset()
+    dataloader = DataLoader(dataset, batch_size=6, shuffle=True)
+    for data in dataloader:
+        print(data["points"].shape)

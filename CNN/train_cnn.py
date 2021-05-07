@@ -38,7 +38,7 @@ for epoch in range(epoches):
         # select points
         points_fused = data_mask(output, cnn_input["points"].float().cuda())
         loss_function = PointsLoss()
-        loss = loss_function(points_fused.cuda(), cnn_input["points"].cuda(), cnn_input["gt_boxes"].cuda(), cnn_input["tf_ego"].cuda())
+        loss = loss_function(points_fused.cuda(), cnn_input["points"].cuda(), cnn_input["gt_boxes"].cuda())
         loss.requires_grad = True
         optimizer.zero_grad()
         loss.backward()
