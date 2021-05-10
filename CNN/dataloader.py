@@ -6,18 +6,18 @@ from pathlib import Path
 from glob import glob
 from collections import defaultdict
 import open3d as o3d
+import matplotlib.pyplot as plt
+from cnn_utils import draw_box_plt
 
 
 class coopDataset(Dataset):
-    def __init__(self, com_range=40, training=True):
+    def __init__(self, com_range=40, view_range = 62.4, training=True):
         self.com_range = com_range
+        self.view_range = view_range
         self.training = training
-        self.pc_range = np.array([-62.4, -62.4, -3, 62.4, 62.4, 1])
         self.root = '/media/ExtHDD01/mastudent/BAI/HybridV50CAV20'
-        self.test_split = ['965', '224', '685', '924', '334', '1175', '139',
-                           '1070', '1050', '1162', '1260']
+        self.test_split = ['965', '224', '685', '924', '334', '1175', '139', '1070', '1050', '1162', '1260']
         self.train_val_split = ['829', '943', '1148', '753', '599', '53', '905', '245', '421', '509']
-        self.view_range = 62.4
         self.map_bin = np.load('../data/map_colsed.npy').astype(int)
 
         # train or test
@@ -35,12 +35,12 @@ class coopDataset(Dataset):
         # remove vehicle out of communication range
         self.coop_files = self.update_file_list()  # path list
 
-
     def __len__(self):
         return len(self.file_list)
 
     def __getitem__(self, idx):
         data_dict = self.load_data(idx)
+        data_dict["gt_boxes"][:, 6] = self.limit_period(data_dict["gt_boxes"][:, 6], 0.5, 2 * np.pi)
         return data_dict
 
     @property
@@ -106,6 +106,7 @@ class coopDataset(Dataset):
         # load cooperative clouds
         coop_files = self.coop_files[index]
         selected = []
+        clouds = [points_ego[:,:2]]
         for i, f in enumerate(coop_files):
             # which frame which coop
             # selected_points 20*256*256
@@ -127,18 +128,16 @@ class coopDataset(Dataset):
             points = points[:, :2] + coop_loc
             grid = self.pc2grid(points, ego_loc)
             grids.append(grid)
+            clouds.append(points)
 
         # fill with zeros
         while len(grids) < 21:
-            a = np.zeros((256, 256))
-            grids.append(a)
+            grids = np.insert(grids, 0, values=0, axis=0)
         grids = np.array(grids)
-        # gt_boxes = np.loadtxt(bbox_filename, dtype=str)[:, [0, 2, 3, 4, 8, 9, 10, 7]].astype(np.float)
         gt_boxes_all = np.loadtxt(os.path.join(self.root, 'vehicle_info', 'j' +
                                                self.file_list[index].split('_')[0] + '.csv'), delimiter=",",skiprows=1,usecols=(0, 2, 3, 4, 5, 9, 10, 11, 8)).astype(np.float)
         gt_boxes = gt_boxes_all[gt_boxes_all[:, 0] == int(self.file_list[index].split('_')[1])]
         gt_boxes = gt_boxes[:, 1:]
-
         coop_ids = [file.rsplit("/")[-1][:-4] for file in coop_files]
         gt_idxs = [np.where(gt_boxes[:, 0] == float(coop_id)) for coop_id in coop_ids]
         gt_boxes = np.squeeze(gt_boxes[gt_idxs, :]).reshape(-1, 8)
@@ -150,7 +149,18 @@ class coopDataset(Dataset):
             "gt_boxes": "gpu_float",
             "frame": "cpu_none"
         }
-
+        # =============================vis============================================
+        ax = plt.figure(figsize=(8, 8)).add_subplot(1, 1, 1)
+        ax.set_aspect('equal', 'box')
+        points = np.concatenate(clouds, axis=0)
+        ax.plot(points[:, 0], points[:, 1], 'b.', markersize=0.3)
+        ax = draw_box_plt(gt_boxes, ax, color='red')
+        # ax = draw_box_plt(pred_boxes[0], ax, color='red')
+        plt.xlabel('x')
+        plt.ylabel('y')
+        plt.savefig('temp1.png')
+        plt.close()
+        # ==============================================================================
         return {
             "points": grids,
             "gt_boxes": gt_boxes,

@@ -7,6 +7,7 @@ from torch.nn import Sequential
 from models.utils import xavier_init, build_norm_layer
 from torch.nn import functional as F
 import numpy as np
+from cnn_utils import draw_box_plt
 
 class PointsLoss(nn.Module):
     def __init__(self):
@@ -29,22 +30,16 @@ class PointsLoss(nn.Module):
         original_points = torch.sum(original_points, dim=1)
         # original_points= torch.dot(original_points, torch.linalg.inv(tf_ego).float())
 
-        # =============================vis============================================
-        plt.subplot(1,2,1)
-        plt.imshow(predicted_points.cpu().data.numpy()[0, :, :])
-        plt.subplot(1,2,2)
-        plt.imshow(original_points.cpu().data.numpy()[0, :, :])
-        plt.savefig("temp")
-        # ==============================================================================
+
         # for every frame
         batch_size = original_points.shape[0]
-        iou = 0
         p = []
         o = []
         for i in range(batch_size):
             p.append(torch.nonzero(predicted_points[i,:,:], as_tuple=False))
             o.append(torch.nonzero(original_points[i,:,:], as_tuple=False))
         boxes_frame = boxes
+        # fill with zeros
         if len(p[0]) > len(p[1]):
             p[1]=torch.cat((p[1],torch.zeros(len(p[0]) - len(p[1]),2).cuda()),dim=0)
         else:
@@ -60,6 +55,20 @@ class PointsLoss(nn.Module):
         predicted_points_idx = torch.cat((predicted_points_idx, y1), dim=2)*0.8
         y2 = torch.ones(2, original_points_idx.shape[1], 1).cuda()
         original_points_idx = torch.cat((original_points_idx, y2), dim=2)*0.8
+
+        # =============================vis============================================
+        for i in range(batch_size):
+            ax = plt.figure(figsize=(8, 8)).add_subplot(1, 1, 1)
+            ax.set_aspect('equal', 'box')
+            points = predicted_points_idx.cpu()
+            ax.plot(points[i,:, 0], points[i,:, 1], 'b.', markersize=0.3)
+            ax = draw_box_plt(boxes[i,:,:], ax, color='green')
+            # ax = draw_box_plt(pred_boxes[0], ax, color='red')
+            plt.xlabel('x')
+            plt.ylabel('y')
+            plt.savefig('temp.png')
+            plt.close()
+        # ==============================================================================
 
         idx_object = self.points_in_boxes_gpu(original_points_idx.float(), boxes_frame.float())
         idx_predict = self.points_in_boxes_gpu(predicted_points_idx.float(), boxes_frame.float())
