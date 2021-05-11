@@ -15,7 +15,7 @@ def draw_box_plt(boxes_dec, ax, color, linewidth_scale=1.0):
     if boxes_np.shape[-1]>5:
         boxes_np = boxes_np[:, [0, 1, 3, 4, 6]]
     x = boxes_np[:, 0]
-    y = -boxes_np[:, 1]
+    y = boxes_np[:, 1]
     dx = boxes_np[:, 2]
     dy = boxes_np[:, 3]
 
@@ -31,7 +31,6 @@ def draw_box_plt(boxes_dec, ax, color, linewidth_scale=1.0):
               - y[:, None]) * (-np.sin(theta)) + x[:, None]
     new_y = (corners[:, :, 0] - x[:, None]) * np.sin(theta) + (corners[:, :, 1]
               - y[:, None]) * (np.cos(theta)) + y[:, None]
-    print('theta:', theta, 'x,y:', x, y,'dxdy:',dx,dy,'newx,y:', new_x,new_y)
     corners = np.stack([new_x, new_y], axis=2)
     for corner in corners:
         ax.plot(corner[[0,1,2,3,0], 0], corner[[0,1,2,3,0], 1], color=color, linewidth=0.5*linewidth_scale)

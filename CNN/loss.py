@@ -29,7 +29,15 @@ class PointsLoss(nn.Module):
         # predicted_points = torch.dot(predicted_points, torch.linalg.inv(tf_ego).float())
         original_points = torch.sum(original_points, dim=1)
         # original_points= torch.dot(original_points, torch.linalg.inv(tf_ego).float())
+        # ==========================================vis============================================
+        plt.subplot(1,2,1)
+        plt.imshow(predicted_points[0,:,:].cpu().detach().numpy())
+        plt.subplot(1,2,2)
+        plt.imshow(original_points[0,:,:].cpu().detach().numpy())
+        plt.savefig('diff.png')
+        plt.close()
 
+        # =========================================================================================
 
         # for every frame
         batch_size = original_points.shape[0]

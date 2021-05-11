@@ -40,7 +40,9 @@ class coopDataset(Dataset):
 
     def __getitem__(self, idx):
         data_dict = self.load_data(idx)
-        data_dict["gt_boxes"][:, 6] = self.limit_period(data_dict["gt_boxes"][:, 6], 0.5, 2 * np.pi)
+        #data_dict["gt_boxes"][:, 6] = self.limit_period(data_dict["gt_boxes"][:, 6], 0.5, 2 * np.pi)
+        data_dict["gt_boxes"][:, 6] = data_dict["gt_boxes"][:, 6]/180*np.pi
+        data_dict["gt_boxes"][:, 1] *= -1
         return data_dict
 
     @property
@@ -149,18 +151,7 @@ class coopDataset(Dataset):
             "gt_boxes": "gpu_float",
             "frame": "cpu_none"
         }
-        # =============================vis============================================
-        ax = plt.figure(figsize=(8, 8)).add_subplot(1, 1, 1)
-        ax.set_aspect('equal', 'box')
-        points = np.concatenate(clouds, axis=0)
-        ax.plot(points[:, 0], points[:, 1], 'b.', markersize=0.3)
-        ax = draw_box_plt(gt_boxes, ax, color='red')
-        # ax = draw_box_plt(pred_boxes[0], ax, color='red')
-        plt.xlabel('x')
-        plt.ylabel('y')
-        plt.savefig('temp1.png')
-        plt.close()
-        # ==============================================================================
+
         return {
             "points": grids,
             "gt_boxes": gt_boxes,
@@ -224,4 +215,8 @@ if __name__ == '__main__':
     dataset = coopDataset()
     dataloader = DataLoader(dataset, batch_size=6, shuffle=True)
     for data in dataloader:
-        print(data["points"].shape)
+        points = torch.sum(data["points"], dim=1)
+        plt.imshow(points[0,:,:])
+        plt.savefig('test.png')
+        plt.close()
+        print('===================================')

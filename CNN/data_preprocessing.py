@@ -5,6 +5,7 @@ from glob import glob
 from tqdm import tqdm
 import open3d as o3d
 import matplotlib.pyplot as plt
+import torch
 
 
 def load_map_patch(ego_loc, grid_size=0.8, ceils=256):
@@ -50,13 +51,14 @@ def load_data(root_path, communication_range=40, grid_size=0.8, ceils=256):
         grids = []
         tf = np.load(os.path.join(root_path, 'tfs', frame + ".npy"), allow_pickle=True).item()
         ego_loc = tf['tf_ego'][0:2, -1]
-
         # map patch
         Map = load_map_patch(ego_loc)
         grids.append(Map)
         # ego point cloud
         ego_path = os.path.join(root_path, 'cloud_ego', frame + '.bin')
-        cloud_ego = np.fromfile(ego_path, dtype=np.float32, count=-1).reshape([-1, 3])
+        cloud_ego = np.fromfile(ego_path, dtype=np.float32, count=-1).reshape([-1, 4])
+        #cloud_ego[:, :2] *= -1
+        cloud_ego = cloud_ego[:,0:3]
         points = np.clip(cloud_ego, a_min=-view_range, a_max=view_range)
         ego_cloud = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(points))
         cloud_ego_transformed = ego_cloud.transform(tf['tf_ego'])
@@ -71,9 +73,10 @@ def load_data(root_path, communication_range=40, grid_size=0.8, ceils=256):
             dis = math.hypot((coop_loc - ego_loc)[0], (coop_loc - ego_loc)[1])
             if dis < communication_range:
                 # read coop cloud
-                cloud_coop = np.fromfile(v, dtype=np.float32, count=-1).reshape([-1, 3])
+                cloud_coop = np.fromfile(v, dtype=np.float32, count=-1).reshape([-1, 4])
                 # data fix
-                cloud_coop[:, :2] *= -1
+                #cloud_coop[:, :2] *= -1
+                cloud_coop = cloud_coop[:,0:3]
 
                 # transform coop cloud in world coordinate sys
                 coop_cloud = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(cloud_coop))
@@ -85,12 +88,15 @@ def load_data(root_path, communication_range=40, grid_size=0.8, ceils=256):
                 points = np.clip(points_in_egoCS, a_min=-view_range, a_max=view_range)
                 points = points[:, :2] + coop_loc
                 grid = pc2grid(points, ego_loc)
-                plt.imshow(grid)
                 grids.append(grid)
         # fill with zeros
         while len(grids) < 21:
             a = np.zeros((256,256))
             grids.append(a)
+        test1 = torch.Tensor(grids)
+        test = torch.sum(test1, dim=0)
+        plt.imshow(test)
+        plt.savefig('test.png')
         input_data.append(grids)
 
         # write data in file
@@ -99,7 +105,8 @@ def load_data(root_path, communication_range=40, grid_size=0.8, ceils=256):
 
 
 
-root_path = '/media/ExtHDD01/mastudent/BAI/HybridV50CAV20'
+#root_path = '/media/ExtHDD01/mastudent/BAI/HybridV50CAV20'
+root_path = '/media/ExtHDD01/mastudent/formated_data'
 grid_size = 0.8
 ceils = 256
 communication_range = 40
