@@ -134,8 +134,9 @@ class coopDataset(Dataset):
 
         # fill with zeros
         while len(grids) < 21:
-            grids = np.insert(grids, 0, values=0, axis=0)
+            grids = np.insert(grids, -1, values=0, axis=0)
         grids = np.array(grids)
+        # ====================bbox================================
         gt_boxes_all = np.loadtxt(os.path.join(self.root, 'vehicle_info', 'j' +
                                                self.file_list[index].split('_')[0] + '.csv'), delimiter=",",skiprows=1,usecols=(0, 2, 3, 4, 5, 9, 10, 11, 8)).astype(np.float)
         gt_boxes = gt_boxes_all[gt_boxes_all[:, 0] == int(self.file_list[index].split('_')[1])]
@@ -145,7 +146,7 @@ class coopDataset(Dataset):
         gt_boxes = np.squeeze(gt_boxes[gt_idxs, :]).reshape(-1, 8)
         gt_boxes = gt_boxes[:, 1:]
         while gt_boxes.shape[0] < 20:
-            gt_boxes = np.insert(gt_boxes, 0, values=0, axis=0)
+            gt_boxes = np.insert(gt_boxes, -1, values=0, axis=0)
         batch_type = {
             "points": "cpu_float",
             "gt_boxes": "gpu_float",
@@ -157,6 +158,7 @@ class coopDataset(Dataset):
             "gt_boxes": gt_boxes,
             "frame": self.file_list[index],
             "batch_types": batch_type,
+            "ego_loc": ego_loc
         }
 
     def pc2grid(self, points, ego_loc, grid_size=0.8, ceils=256):
@@ -185,6 +187,14 @@ class coopDataset(Dataset):
         inds_y = np.clip(inds[:, 1], a_min=0, a_max=map_size[1] - 1)
         view = self.map_bin[inds_x, inds_y].astype(int)
         view = view.reshape(map_view_size[0], map_view_size[1])
+        # switch x and y axis
+        for i in range(ceils-1):
+            j = i
+            while j < ceils:
+                tmp_item = view[i][j]
+                view[i][j] = view[j][i]
+                view[j][i] = tmp_item
+                j +=1
         return view
 
     def split(self):
@@ -217,6 +227,6 @@ if __name__ == '__main__':
     for data in dataloader:
         points = torch.sum(data["points"], dim=1)
         plt.imshow(points[0,:,:])
-        plt.savefig('test.png')
+        plt.savefig('test1.png')
         plt.close()
         print('===================================')
