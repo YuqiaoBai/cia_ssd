@@ -1,10 +1,7 @@
 import torch
 import torch.nn as nn
-from ops.roiaware_pool3d import roiaware_pool3d_cuda
-from utils import common_utils
 from torch.nn import Sequential
-from models.utils import xavier_init, build_norm_layer
-from torch.nn import functional as F
+
 
 class ConvNet(nn.Module):
     def __init__(self):

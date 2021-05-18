@@ -1,13 +1,9 @@
 import torch
 import torch.nn as nn
 from ops.roiaware_pool3d import roiaware_pool3d_cuda
-from utils import common_utils
 import matplotlib.pyplot as plt
-from torch.nn import Sequential
-from models.utils import xavier_init, build_norm_layer
-from torch.nn import functional as F
-import numpy as np
 from cnn_utils import draw_box_plt
+from utils import common_utils
 
 class PointsLoss(nn.Module):
     def __init__(self):
@@ -59,69 +55,116 @@ class PointsLoss(nn.Module):
         predicted_points_idx = torch.stack(p, 0)-128
         original_points_idx = torch.stack(o, 0)-128
         # set z = 1
-        y1 = torch.ones(2, predicted_points_idx.shape[1], 1).cuda()
+        y1 = torch.zeros(2, predicted_points_idx.shape[1], 1).cuda()
         predicted_points_idx = torch.cat((predicted_points_idx, y1), dim=2)*0.8
-        y2 = torch.ones(2, original_points_idx.shape[1], 1).cuda()
+        y2 = torch.zeros(2, original_points_idx.shape[1], 1).cuda()
         original_points_idx = torch.cat((original_points_idx, y2), dim=2)*0.8
 
         # =============================vis============================================
         ax = plt.figure(figsize=(8, 8)).add_subplot(1, 1, 1)
         points = predicted_points_idx.cpu()
         ax.plot(points[0,:, 0], points[0,:, 1], 'b.', markersize=0.5)
-        boxes[:,:,0:2] = boxes[:,:,0:2] - ego_loc[:,None,:]
-        ax = draw_box_plt(boxes[0,:,:], ax, color='green')
+        boxes_frame[:,:,0:2] = boxes_frame[:,:,0:2] - ego_loc[:,None,:]
+        ax = draw_box_plt(boxes_frame[0,:,:], ax, color='green')
         # ax = draw_box_plt(pred_boxes[0], ax, color='red')
         plt.xlabel('x')
         plt.ylabel('y')
         plt.savefig('temp.png')
         plt.close()
         # ==============================================================================
-
-        idx_original = self.points_in_boxes_gpu(original_points_idx.float(), boxes_frame.float())
-        idx_predict = self.points_in_boxes_gpu(predicted_points_idx.float(), boxes_frame.float())
-        # get points
-        n_object = []
-        n_predict = []
         for i in range(batch_size):
-            o_idx = idx_original[i, :]
-            nz1 = torch.nonzero(o_idx)
-            n_object.append(original_points_idx[nz1])
-            p_idx = idx_predict[i, :]
-            nz2 = torch.nonzero(p_idx)
-            n_predict.append(predicted_points_idx[nz2])
-        # in grid
-        n_object_grid = torch.zeros(256, 256)
-        n_predict_grid = torch.zeros(256, 256)
-        x = torch.Tensor(n_object)
-        y = torch.Tensor(n_object)
-        inds_x = (x / 0.8 + 256 / 2)
-        inds_y = (y / 0.8 + 256 / 2)
-        n_object_grid[inds_x, inds_y] = 1
+            idx_original = self.points_in_boxes_gpu(original_points_idx[i,:,:].float().unsqueeze(0), boxes_frame[i,:,:].float().unsqueeze(0))
+            idx_predict = self.points_in_boxes_gpu(predicted_points_idx[i,:,:].float().unsqueeze(0), boxes_frame[i,:,:].float().unsqueeze(0))
+            print((idx_original != -1).sum())
+            print((idx_predict != -1).sum())
 
-        x1 = n_predict[:, 0]
-        y1 = n_predict[:, 1]
-        inds_x = (x1 / 0.8 + 256 / 2)
-        inds_y = (y1 / 0.8 + 256 / 2)
-        n_predict_grid[inds_x, inds_y] = 1
-        for j in range(boxes_frame.shape[0]):
-            intersection = (n_object_grid & n_predict_grid).float()
-            union = (n_object_grid | n_predict_grid).float()
-            iou = iou + intersection/union
-            print(i, 'iou:', iou)
+            o_idx = torch.where(idx_original != -1)
+            p_idx = torch.where(idx_predict != -1)
+            n_object = original_points_idx[o_idx]
+            n_predict = predicted_points_idx[p_idx]
+
+            # get points
+            # n_object = []
+            # n_predict = []
+            # for i in range(batch_size):
+            #     o_idx = idx_original[i, :]
+            #     nz1 = torch.where(o_idx != 0)
+            #     n_object.append(original_points_idx[nz1])
+            #     p_idx = idx_predict[i, :]
+            #     nz2 = torch.where(p_idx != 0)
+            #     n_predict.append(predicted_points_idx[nz2])
+
+
+
+            # in grid
+            n_object_grid = torch.zeros(256, 256)
+            n_predict_grid = torch.zeros(256, 256)
+            x =n_object[:, 0]
+            y =n_object[:, 1]
+            inds_x = (x / 0.8 + 256 / 2).type(torch.bool)
+            inds_y = (y / 0.8 + 256 / 2).type(torch.bool)
+            print(inds_y.size())
+            n_object_grid[inds_x, inds_y] = 1
+
+            x1 = n_predict[:, 0]
+            y1 = n_predict[:, 1]
+            inds_x = (x1 / 0.8 + 256 / 2)
+            inds_y = (y1 / 0.8 + 256 / 2)
+            n_predict_grid[inds_x, inds_y] = 1
+            for j in range(boxes_frame.shape[0]):
+                intersection = (n_object_grid & n_predict_grid).float()
+                union = (n_object_grid | n_predict_grid).float()
+                iou = iou + intersection/union
+                print(i, 'iou:', iou)
         iou = iou/batch_size
         return iou
 
     def points_in_boxes_gpu(self, points, boxes):
-        """
-        :param points: (B, M, 3)
-        :param boxes: (B, T, 7), num_valid_boxes <= T
-        :return box_idxs_of_pts: (B, M), default background = -1
+        """Find points that are in boxes (CUDA)
+        Args:
+        points (torch.Tensor): [B, M, 3], [x, y, z] in LiDAR coordinate
+        boxes (torch.Tensor): [B, T, 7],
+            num_valid_boxes <= T, [x, y, z, w, l, h, ry] in LiDAR coordinate,
+            (x, y, z) is the bottom center
+        Returns:
+        box_idxs_of_pts (torch.Tensor): (B, M), default background = -1
         """
         assert boxes.shape[0] == points.shape[0]
         assert boxes.shape[2] == 7 and points.shape[2] == 3
         batch_size, num_points, _ = points.shape
 
         box_idxs_of_pts = points.new_zeros((batch_size, num_points), dtype=torch.int).fill_(-1)
+        # If manually put the tensor 'points' or 'boxes' on a device
+        # which is not the current device, some temporary variables
+        # will be created on the current device in the cuda op,
+        # and the output will be incorrect.
+        # Therefore, we force the current device to be the same
+        # as the device of the tensors if it was not.
+        # Please refer to https://github.com/open-mmlab/mmdetection3d/issues/305
+        # for the incorrect output before the fix.
+        points_device = points.get_device()
+        assert points_device == boxes.get_device(), \
+            'Points and boxes should be put on the same device'
+        if torch.cuda.current_device() != points_device:
+            torch.cuda.set_device(points_device)
         roiaware_pool3d_cuda.points_in_boxes_gpu(boxes.contiguous(), points.contiguous(), box_idxs_of_pts)
 
         return box_idxs_of_pts
+
+    def points_in_boxes_cpu(self, points, boxes):
+        """
+        Args:
+            points: (num_points, 3)
+            boxes: [x, y, z, dx, dy, dz, heading], (x, y, z) is the box center, each box DO NOT overlaps
+        Returns:
+            point_indices: (N, num_points)
+        """
+        assert boxes.shape[1] == 7
+        assert points.shape[1] == 3
+        points, is_numpy = common_utils.check_numpy_to_torch(points)
+        boxes, is_numpy = common_utils.check_numpy_to_torch(boxes)
+
+        point_indices = points.new_zeros((boxes.shape[0], points.shape[0]), dtype=torch.int)
+        roiaware_pool3d_cuda.points_in_boxes_gpu(boxes.float().contiguous(), points.float().contiguous(), point_indices)
+
+        return point_indices.numpy() if is_numpy else point_indices

@@ -4,7 +4,6 @@ import torch
 from dataloader import coopDataset
 from torch.utils.data import DataLoader
 import torch.optim as optim
-import matplotlib.pyplot as plt
 
 
 def data_mask(mask, points):

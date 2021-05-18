@@ -4,10 +4,8 @@ import numpy as np
 from torch.utils.data import Dataset, DataLoader
 from pathlib import Path
 from glob import glob
-from collections import defaultdict
 import open3d as o3d
 import matplotlib.pyplot as plt
-from cnn_utils import draw_box_plt
 
 
 class coopDataset(Dataset):
