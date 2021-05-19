@@ -75,48 +75,31 @@ class PointsLoss(nn.Module):
         for i in range(batch_size):
             idx_original = self.points_in_boxes_gpu(original_points_idx[i,:,:].float().unsqueeze(0), boxes_frame[i,:,:].float().unsqueeze(0))
             idx_predict = self.points_in_boxes_gpu(predicted_points_idx[i,:,:].float().unsqueeze(0), boxes_frame[i,:,:].float().unsqueeze(0))
-            print((idx_original != -1).sum())
-            print((idx_predict != -1).sum())
 
             o_idx = torch.where(idx_original != -1)
             p_idx = torch.where(idx_predict != -1)
             n_object = original_points_idx[o_idx]
             n_predict = predicted_points_idx[p_idx]
 
-            # get points
-            # n_object = []
-            # n_predict = []
-            # for i in range(batch_size):
-            #     o_idx = idx_original[i, :]
-            #     nz1 = torch.where(o_idx != 0)
-            #     n_object.append(original_points_idx[nz1])
-            #     p_idx = idx_predict[i, :]
-            #     nz2 = torch.where(p_idx != 0)
-            #     n_predict.append(predicted_points_idx[nz2])
-
-
-
             # in grid
             n_object_grid = torch.zeros(256, 256)
             n_predict_grid = torch.zeros(256, 256)
             x =n_object[:, 0]
             y =n_object[:, 1]
-            inds_x = (x / 0.8 + 256 / 2).type(torch.bool)
-            inds_y = (y / 0.8 + 256 / 2).type(torch.bool)
-            print(inds_y.size())
+            inds_x = (x / 0.8 + 256 / 2).long()
+            inds_y = (y / 0.8 + 256 / 2).long()
             n_object_grid[inds_x, inds_y] = 1
+            n_object_grid = n_object_grid.bool()
 
             x1 = n_predict[:, 0]
             y1 = n_predict[:, 1]
-            inds_x = (x1 / 0.8 + 256 / 2)
-            inds_y = (y1 / 0.8 + 256 / 2)
+            inds_x = (x1 / 0.8 + 256 / 2).long()
+            inds_y = (y1 / 0.8 + 256 / 2).long()
             n_predict_grid[inds_x, inds_y] = 1
-            for j in range(boxes_frame.shape[0]):
-                intersection = (n_object_grid & n_predict_grid).float()
-                union = (n_object_grid | n_predict_grid).float()
-                iou = iou + intersection/union
-                print(i, 'iou:', iou)
-        iou = iou/batch_size
+            n_predict_grid = n_predict_grid.bool()
+            intersection = ((n_object_grid & n_predict_grid)==True).sum().float()
+            union = ((n_object_grid | n_predict_grid)==True).sum().float()
+            iou = intersection/union
         return iou
 
     def points_in_boxes_gpu(self, points, boxes):
